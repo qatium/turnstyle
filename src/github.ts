@@ -66,7 +66,6 @@ export class OctokitGitHub implements GitHub {
       owner,
       repo,
       workflow_id,
-      status: "in_progress",
     };
 
     if (branch) {

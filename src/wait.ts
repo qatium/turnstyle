@@ -50,6 +50,7 @@ export class Waiter implements Wait {
       this.workflowId
     );
     const previousRuns = runs
+      .filter((run) => ["in_progress", "queued"].includes(run.status))
       .filter((run) => run.id < this.input.runId)
       .sort((a, b) => b.id - a.id);
     if (!previousRuns || !previousRuns.length) {

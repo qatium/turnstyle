@@ -146,6 +146,11 @@ describe("wait", () => {
             status: "in_progress",
             html_url: "3",
           },
+          {
+            id: 4,
+            status: "queued",
+            html_url: "4",
+          },
         ];
         // Give the current run an id that makes it the last in the queue.
         input.runId = inProgressRuns.length + 1;
@@ -160,7 +165,7 @@ describe("wait", () => {
         const mockedRunsFunc = jest.fn();
         mockedRunsFunc
           .mockReturnValueOnce(Promise.resolve(inProgressRuns.slice(0)))
-          .mockReturnValueOnce(Promise.resolve(inProgressRuns.slice(0, 2)))
+          .mockReturnValueOnce(Promise.resolve(inProgressRuns.slice(0, 3)))
           .mockReturnValueOnce(Promise.resolve(inProgressRuns))
           // Finally return just the run that was queued _after_ the "input" run.
           .mockReturnValue(
