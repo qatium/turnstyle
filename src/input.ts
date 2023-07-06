@@ -9,6 +9,7 @@ export interface Input {
   continueAfterSeconds: number | undefined;
   abortAfterSeconds: number | undefined;
   sameBranchOnly: boolean;
+  exponentialBackoffRetries: boolean;
 }
 
 export const parseInput = (env: Record<string, string | undefined>): Input => {
@@ -34,6 +35,9 @@ export const parseInput = (env: Record<string, string | undefined>): Input => {
   }
   const sameBranchOnly =
     env["INPUT_SAME-BRANCH-ONLY"] === "true" || !env["INPUT_SAME-BRANCH-ONLY"]; // true if not specified
+  const exponentialBackoffRetries =
+    env["INPUT_EXPONENTIAL-BACKOFF-RETRIES"] === "true" || false;
+
   return {
     githubToken,
     owner,
@@ -45,5 +49,6 @@ export const parseInput = (env: Record<string, string | undefined>): Input => {
     continueAfterSeconds,
     abortAfterSeconds,
     sameBranchOnly,
+    exponentialBackoffRetries,
   };
 };

@@ -14,6 +14,7 @@ describe("input", () => {
           "INPUT_CONTINUE-AFTER-SECONDS": "10",
           "INPUT_POLL-INTERVAL-SECONDS": "5",
           "INPUT_SAME-BRANCH-ONLY": "false",
+          "INPUT_EXPONENTIAL-BACKOFF-RETRIES": "true",
         }),
         {
           githubToken: "s3cr3t",
@@ -26,6 +27,7 @@ describe("input", () => {
           abortAfterSeconds: undefined,
           pollIntervalSeconds: 5,
           sameBranchOnly: false,
+          exponentialBackoffRetries: true,
         }
       );
     });
@@ -41,6 +43,7 @@ describe("input", () => {
           "INPUT_ABORT-AFTER-SECONDS": "10",
           "INPUT_POLL-INTERVAL-SECONDS": "5",
           "INPUT_SAME-BRANCH-ONLY": "false",
+          "INPUT_EXPONENTIAL-BACKOFF-RETRIES": "false",
         }),
         {
           githubToken: "s3cr3t",
@@ -53,6 +56,7 @@ describe("input", () => {
           abortAfterSeconds: 10,
           pollIntervalSeconds: 5,
           sameBranchOnly: false,
+          exponentialBackoffRetries: false,
         }
       );
     });
@@ -67,6 +71,7 @@ describe("input", () => {
           GITHUB_RUN_ID: "1",
           "INPUT_CONTINUE-AFTER-SECONDS": "10",
           "INPUT_ABORT-AFTER-SECONDS": "2",
+          "INPUT_EXPONENTIAL-BACKOFF-RETRIES": "false",
         })
       );
     });
@@ -82,6 +87,7 @@ describe("input", () => {
           "INPUT_CONTINUE-AFTER-SECONDS": "",
           "INPUT_POLL-INTERVAL-SECONDS": "",
           "INPUT_SAME-BRANCH-ONLY": "",
+          "INPUT_EXPONENTIAL-BACKOFF-RETRIES": "",
         }),
         {
           githubToken: "s3cr3t",
@@ -94,6 +100,7 @@ describe("input", () => {
           abortAfterSeconds: undefined,
           pollIntervalSeconds: 60,
           sameBranchOnly: true,
+          exponentialBackoffRetries: false,
         }
       );
     });
@@ -119,6 +126,7 @@ describe("input", () => {
           abortAfterSeconds: undefined,
           pollIntervalSeconds: 60,
           sameBranchOnly: true,
+          exponentialBackoffRetries: false,
         }
       );
     });
