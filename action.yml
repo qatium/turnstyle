@@ -16,7 +16,7 @@ inputs:
     description: "Maximum number of seconds to wait before failing the step (unbound by default). Mutually exclusive with continue-after-seconds"
   same-branch-only:
     description: "Only wait on other runs from the same branch (defaults to true)"
-  exponentail-backoff-retries:
+  exponential-backoff-retries:
     description: "Apply an exponential backoff to poll-interval-seconds (defaults to false)"
 outputs:
   force_continued:
