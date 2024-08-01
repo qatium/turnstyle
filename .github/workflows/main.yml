@@ -1,7 +1,7 @@
 name: Main
 
 env:
-  NODE_VERSION: "16.15.1"
+  NODE_VERSION: "20.10.0"
 
 on: 
   workflow_dispatch:
