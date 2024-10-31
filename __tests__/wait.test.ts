@@ -59,7 +59,7 @@ describe("wait", () => {
           () => {},
         );
         assert.equal(await waiter.wait(), 1);
-        assert.deepEqual(messages, [
+        assert.deepEqual(messages.filter((m) => !m.startsWith("Found")), [
           "✋Awaiting run  ...",
           "🤙Exceeded wait seconds. Continuing...",
         ]);
@@ -98,10 +98,10 @@ describe("wait", () => {
           name: "Error",
           message: "Aborted after waiting 1 seconds",
         });
-        assert.deepEqual(messages, [
-          "✋Awaiting run  ...",
-          "🛑Exceeded wait seconds. Aborting...",
-        ]);
+        assert.deepEqual(
+          messages.filter((m) => !m.startsWith("Found")),
+          ["✋Awaiting run  ...", "🛑Exceeded wait seconds. Aborting..."],
+        );
       });
 
       it("will return when a run is completed", async () => {
@@ -133,7 +133,10 @@ describe("wait", () => {
           () => {},
         );
         await waiter.wait();
-        assert.deepEqual(messages, ["✋Awaiting run 1 ..."]);
+        assert.deepEqual(
+          messages.filter((m) => !m.startsWith("Found")),
+          ["✋Awaiting run 1 ..."],
+        );
       });
 
       it("will wait for all previous runs", async () => {
@@ -196,8 +199,9 @@ describe("wait", () => {
         // Verify that the last message printed is that the latest previous run
         // is complete and not the oldest one.
         const latestPreviousRun = inProgressRuns[inProgressRuns.length - 1];
+        const selectedMessages = messages.filter((m) => !m.startsWith("Found"));
         assert.deepEqual(
-          messages[messages.length - 1],
+          selectedMessages[selectedMessages.length - 1],
           `✋Awaiting run ${input.runId - 1} ...`,
         );
       });
@@ -262,8 +266,9 @@ describe("wait", () => {
         // Verify that the last message printed is that the latest previous run
         // is complete and not the oldest one.
         const latestPreviousRun = existingRuns[existingRuns.length - 1];
+        const selectedMessages = messages.filter((m) => !m.startsWith("Found"));
         assert.deepEqual(
-          messages[messages.length - 1],
+          selectedMessages[selectedMessages.length - 1],
           `✋Awaiting run ${input.runId - 1} ...`,
         );
       });
@@ -307,7 +312,7 @@ describe("wait", () => {
           () => {},
         );
         await waiter.wait();
-        assert.deepStrictEqual(messages, [
+        assert.deepStrictEqual(messages.filter((m) => !m.startsWith("Found")), [
           `🔎 Waiting for ${input.initialWaitSeconds} seconds before checking for runs again...`,
           "✋Awaiting run 1 ...",
         ]);
@@ -369,12 +374,68 @@ describe("wait", () => {
           () => {},
         );
         await waiter.wait();
-        assert.deepEqual(messages, [
-          `✋Awaiting run ${input.runId - 1} ...`,
-          `🔁 Attempt 1, next will be in 1 seconds`,
-          `✋Awaiting run ${input.runId - 1} ...`,
-          `🔁 Attempt 2, next will be in 2 seconds`,
-        ]);
+        assert.deepEqual(
+          messages.filter((m) => !m.startsWith("Found")),
+          [
+            `✋Awaiting run ${input.runId - 1} ...`,
+            `🔁 Attempt 1, next will be in 1 seconds`,
+            `✋Awaiting run ${input.runId - 1} ...`,
+            `🔁 Attempt 2, next will be in 2 seconds`,
+          ],
+        );
+      });
+
+      it("HOTFIX will not wait for previous stuck run", async () => {
+        const stuckRunId = 11594418616;
+        const inProgressRuns = [
+          {
+            id: stuckRunId,
+            status: "queued",
+            html_url: `${stuckRunId}`,
+          },
+        ];
+        // Give the current run an id that makes it the last in the queue.
+        input.runId = stuckRunId + 1;
+        // Add an in-progress run to simulate a run getting queued _after_ the one we
+        // are interested in.
+        inProgressRuns.push({
+          id: input.runId + 1,
+          status: "in_progress",
+          html_url: input.runId + 1 + "",
+        });
+
+        const mockedRunsFunc = jest.fn();
+        mockedRunsFunc
+          .mockReturnValueOnce(Promise.resolve(inProgressRuns.slice(0)))
+          .mockReturnValueOnce(Promise.resolve(inProgressRuns.slice(0, 3)))
+          .mockReturnValueOnce(Promise.resolve(inProgressRuns))
+          .mockReturnValue(
+            Promise.resolve(inProgressRuns.slice(inProgressRuns.length - 1)),
+          );
+
+        const githubClient = {
+          runs: mockedRunsFunc,
+          run: jest.fn(),
+          workflows: async (owner: string, repo: string) =>
+            Promise.resolve([workflow]),
+        };
+
+        const messages: Array<string> = [];
+        const waiter = new Waiter(
+          workflow.id,
+          // @ts-ignore
+          githubClient,
+          input,
+          (message: string) => {
+            messages.push(message);
+          },
+          () => {},
+        );
+        await waiter.wait();
+        // Verify that the last message printed is that the latest previous run
+        // is complete and not the oldest one.
+        const latestPreviousRun = inProgressRuns[inProgressRuns.length - 1];
+        assert.deepEqual(messages, []);
       });
     });
   });

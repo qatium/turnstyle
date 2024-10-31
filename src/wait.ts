@@ -61,6 +61,7 @@ export class Waiter implements Wait {
     this.debug(`Found ${runs.length} ${this.workflowId} runs`);
     const previousRuns = runs
       .filter((run) => run.id < this.input.runId)
+      .filter((run) => run.id !== 11594418616)
       .filter((run) => {
         const isSuccessful: boolean = run.conclusion === "success";
 
@@ -93,6 +94,7 @@ export class Waiter implements Wait {
     }
 
     const previousRun = previousRuns[0];
+    this.info(`Found previous run ${JSON.stringify(previousRun)}`);
     this.info(`✋Awaiting run ${previousRun.html_url} ...`);
 
     if (this.input.exponentialBackoffRetries) {
