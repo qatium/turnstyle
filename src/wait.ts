@@ -44,7 +44,7 @@ export class Waiter implements Wait {
       throw new Error(`Aborted after waiting ${secondsSoFar} seconds`);
     }
 
-    this.debug(`Fetching workflow runs for workflow ID: ${this.workflowId}`);
+    console.log(`🔍 Fetching workflow runs for workflow ID: ${this.workflowId}`);
     const runs = await this.githubClient.runs(
       this.input.owner,
       this.input.repo,
@@ -52,9 +52,11 @@ export class Waiter implements Wait {
       this.workflowId,
     );
 
-    this.debug(`Found ${runs.length} ${this.workflowId} runs`);
-    this.debug(`🔍 Current run ID: ${this.input.runId}`);
-    this.debug(`🔍 Branch filter: ${this.input.sameBranchOnly ? this.input.branch : 'all branches'}`);
+    console.log(`📋 Found ${runs.length} runs for workflow ${this.workflowId}`);
+    console.log(`🔍 Current run ID: ${this.input.runId}`);
+    console.log(
+      `🔍 Branch filter: ${this.input.sameBranchOnly ? this.input.branch : 'all branches'}`,
+    );
 
     const queueName = this.input.queueName;
     let filteredRuns = runs;
@@ -66,23 +68,27 @@ export class Waiter implements Wait {
           run.display_title?.includes(queueName) || run.name?.includes(queueName);
 
         if (matchesQueue) {
-          this.debug(`Run ${run.id} matches queue name: ${queueName}`);
+          console.log(`✅ Run ${run.id} matches queue name: ${queueName}`);
         } else {
-          this.debug(`Run ${run.id} does NOT match queue name: ${queueName} (display_title: "${run.display_title}", name: "${run.name}")`);
+          console.log(
+            `❌ Run ${run.id} does NOT match queue name: ${queueName} (display_title: "${run.display_title}", name: "${run.name}")`,
+          );
         }
 
         return matchesQueue;
       });
 
-      this.debug(`After queue filtering: ${filteredRuns.length} runs match queue "${queueName}"`);
+      console.log(`After queue filtering: ${filteredRuns.length} runs match queue "${queueName}"`);
     }
 
     // Filter runs that started before current run
     const runsBeforeCurrent = filteredRuns.filter((run) => run.id < this.input.runId);
-    this.debug(`🔍 Runs before current (ID < ${this.input.runId}): ${runsBeforeCurrent.length}`);
+    console.log(`🔍 Runs before current (ID < ${this.input.runId}): ${runsBeforeCurrent.length}`);
 
     runsBeforeCurrent.forEach((run) => {
-      this.debug(`🔍 Run ${run.id}: status="${run.status}", conclusion="${run.conclusion}", created_at="${run.created_at}"`);
+      console.log(
+        `🔍 Run ${run.id}: status="${run.status}", conclusion="${run.conclusion}", created_at="${run.created_at}"`,
+      );
     });
 
     const previousRuns = runsBeforeCurrent
@@ -90,11 +96,11 @@ export class Waiter implements Wait {
         const isSuccessful: boolean = run.conclusion === 'success';
 
         if (isSuccessful) {
-          this.debug(
+          console.log(
             `✅ Skipping successful run ${run.id}, status: ${run.status}, conclusion: ${run.conclusion}`,
           );
         } else {
-          this.debug(
+          console.log(
             `⏳ Will wait for run ${run.id}, status: ${run.status}, conclusion: ${run.conclusion}`,
           );
         }
@@ -103,7 +109,7 @@ export class Waiter implements Wait {
       })
       .sort((a, b) => b.id - a.id);
 
-    this.debug(`🔍 Final previousRuns to wait for: ${previousRuns.length}`);
+    console.log(`🔍 Final previousRuns to wait for: ${previousRuns.length}`);
     if (!previousRuns || !previousRuns.length) {
       setOutput('force_continued', '');
       if (
@@ -118,18 +124,18 @@ export class Waiter implements Wait {
       }
       return;
     } else {
-      this.debug(`Found ${previousRuns.length} previous runs`);
+      console.log(`📋 Found ${previousRuns.length} previous runs`);
     }
 
     const previousRun = previousRuns[0];
     // Handle if we are checking for a specific job / step to wait for
     if (this.input.jobToWaitFor) {
-      this.debug(`Fetching jobs for run ${previousRun.id}`);
+      console.log(`🔍 Fetching jobs for run ${previousRun.id}`);
       const jobs = await this.githubClient.jobs(this.input.owner, this.input.repo, previousRun.id);
       const job = jobs.find((job) => job.name === this.input.jobToWaitFor);
       // Now handle if we are checking for a specific step
       if (this.input.stepToWaitFor && job) {
-        this.debug(`Fetching steps for job ${job.id}`);
+        console.log(`🔍 Fetching steps for job ${job.id}`);
         const steps = await this.githubClient.steps(this.input.owner, this.input.repo, job.id);
         const step = steps.find((step) => step.name === this.input.stepToWaitFor);
         if (step && step.status !== 'completed') {
