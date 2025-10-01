@@ -53,6 +53,8 @@ export class Waiter implements Wait {
     );
 
     this.debug(`Found ${runs.length} ${this.workflowId} runs`);
+    this.debug(`🔍 Current run ID: ${this.input.runId}`);
+    this.debug(`🔍 Branch filter: ${this.input.sameBranchOnly ? this.input.branch : 'all branches'}`);
 
     const queueName = this.input.queueName;
     let filteredRuns = runs;
@@ -65,6 +67,8 @@ export class Waiter implements Wait {
 
         if (matchesQueue) {
           this.debug(`Run ${run.id} matches queue name: ${queueName}`);
+        } else {
+          this.debug(`Run ${run.id} does NOT match queue name: ${queueName} (display_title: "${run.display_title}", name: "${run.name}")`);
         }
 
         return matchesQueue;
@@ -73,20 +77,33 @@ export class Waiter implements Wait {
       this.debug(`After queue filtering: ${filteredRuns.length} runs match queue "${queueName}"`);
     }
 
-    const previousRuns = filteredRuns
-      .filter((run) => run.id < this.input.runId)
+    // Filter runs that started before current run
+    const runsBeforeCurrent = filteredRuns.filter((run) => run.id < this.input.runId);
+    this.debug(`🔍 Runs before current (ID < ${this.input.runId}): ${runsBeforeCurrent.length}`);
+
+    runsBeforeCurrent.forEach((run) => {
+      this.debug(`🔍 Run ${run.id}: status="${run.status}", conclusion="${run.conclusion}", created_at="${run.created_at}"`);
+    });
+
+    const previousRuns = runsBeforeCurrent
       .filter((run) => {
         const isSuccessful: boolean = run.conclusion === 'success';
 
         if (isSuccessful) {
           this.debug(
-            `Skipping run ${run.id}, status: ${run.status}, conclusion: ${run.conclusion}`,
+            `✅ Skipping successful run ${run.id}, status: ${run.status}, conclusion: ${run.conclusion}`,
+          );
+        } else {
+          this.debug(
+            `⏳ Will wait for run ${run.id}, status: ${run.status}, conclusion: ${run.conclusion}`,
           );
         }
 
         return !isSuccessful;
       })
       .sort((a, b) => b.id - a.id);
+
+    this.debug(`🔍 Final previousRuns to wait for: ${previousRuns.length}`);
     if (!previousRuns || !previousRuns.length) {
       setOutput('force_continued', '');
       if (
