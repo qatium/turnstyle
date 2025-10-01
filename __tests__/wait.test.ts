@@ -516,9 +516,10 @@ describe('wait', () => {
         const skippedMessages = debugMessages.filter((msg) =>
           msg.includes('already completed'),
         );
-        assert.equal(skippedMessages.length, 2);
-        assert(skippedMessages.some((msg) => msg.includes('run 1')));
-        assert(skippedMessages.some((msg) => msg.includes('run 2')));
+        // We expect 4 messages: 2 runs skipped in first iteration + same 2 runs skipped in second iteration
+        assert.equal(skippedMessages.length, 4);
+        assert(skippedMessages.filter((msg) => msg.includes('run 1')).length >= 1);
+        assert(skippedMessages.filter((msg) => msg.includes('run 2')).length >= 1);
       });
 
       it('will wait for all previous runs with exponential backoff', async () => {
