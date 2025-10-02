@@ -32,6 +32,12 @@ export class Waiter implements Wait {
   wait = async (secondsSoFar?: number) => {
     let pollingInterval = this.input.pollIntervalSeconds;
 
+    // Log timing information on first call
+    if (!secondsSoFar || secondsSoFar === 0) {
+      const startTime = new Date().toISOString();
+      console.log(`⏱️ [${startTime}] Starting turnstyle wait for run ID: ${this.input.runId}`);
+    }
+
     if (this.input.continueAfterSeconds && (secondsSoFar || 0) >= this.input.continueAfterSeconds) {
       this.info(`🤙Exceeded wait seconds. Continuing...`);
       setOutput('force_continued', '1');
@@ -44,19 +50,38 @@ export class Waiter implements Wait {
       throw new Error(`Aborted after waiting ${secondsSoFar} seconds`);
     }
 
-    console.log(`🔍 Fetching workflow runs for workflow ID: ${this.workflowId}`);
+    const fetchTime = new Date().toISOString();
+    console.log(`🔍 [${fetchTime}] Fetching workflow runs for workflow ID: ${this.workflowId}`);
     const runs = await this.githubClient.runs(
       this.input.owner,
       this.input.repo,
       this.input.sameBranchOnly ? this.input.branch : undefined,
       this.workflowId,
     );
+    const responseTime = new Date().toISOString();
+    console.log(`📋 [${responseTime}] Received response with ${runs.length} runs`);
 
     console.log(`📋 Found ${runs.length} runs for workflow ${this.workflowId}`);
     console.log(`🔍 Current run ID: ${this.input.runId}`);
     console.log(
       `🔍 Branch filter: ${this.input.sameBranchOnly ? this.input.branch : 'all branches'}`,
     );
+
+    // Log ALL runs to detect timing issues
+    if (runs.length > 0) {
+      console.log(`📊 ALL runs returned by API (for race condition analysis):`);
+      runs.forEach((run) => {
+        const comparison =
+          run.id < this.input.runId
+            ? '⬅️ BEFORE current'
+            : run.id > this.input.runId
+              ? '➡️ AFTER current'
+              : '🔄 IS current';
+        console.log(
+          `   ${comparison} | ID=${run.id}, status="${run.status}", conclusion="${run.conclusion}", created_at="${run.created_at}"`,
+        );
+      });
+    }
 
     const queueName = this.input.queueName;
     let filteredRuns = runs;
@@ -86,8 +111,11 @@ export class Waiter implements Wait {
     console.log(`🔍 Runs before current (ID < ${this.input.runId}): ${runsBeforeCurrent.length}`);
 
     runsBeforeCurrent.forEach((run) => {
+      const runCreatedAt = new Date(run.created_at);
+      const currentTime = new Date();
+      const ageSeconds = Math.floor((currentTime.getTime() - runCreatedAt.getTime()) / 1000);
       console.log(
-        `🔍 Run ${run.id}: status="${run.status}", conclusion="${run.conclusion}", created_at="${run.created_at}"`,
+        `🔍 Run ${run.id}: status="${run.status}", conclusion="${run.conclusion}", created_at="${run.created_at}", age=${ageSeconds}s`,
       );
     });
 
@@ -112,16 +140,24 @@ export class Waiter implements Wait {
     console.log(`🔍 Final previousRuns to wait for: ${previousRuns.length}`);
     if (!previousRuns || !previousRuns.length) {
       setOutput('force_continued', '');
+      const decisionTime = new Date().toISOString();
       if (
         this.input.initialWaitSeconds > 0 &&
         (secondsSoFar || 0) < this.input.initialWaitSeconds
       ) {
+        console.log(
+          `⏳ [${decisionTime}] No previous runs found, but will retry due to initial-wait-seconds=${this.input.initialWaitSeconds}`,
+        );
         this.info(
           `🔎 Waiting for ${this.input.initialWaitSeconds} seconds before checking for runs again...`,
         );
         await new Promise((resolve) => setTimeout(resolve, this.input.initialWaitSeconds * 1000));
         return this.wait((secondsSoFar || 0) + this.input.initialWaitSeconds);
       }
+      console.log(`✅ [${decisionTime}] No previous runs to wait for - proceeding with deployment`);
+      console.log(
+        `📊 DECISION: Allowing run ${this.input.runId} to proceed (found ${runs.length} total runs, ${runsBeforeCurrent.length} before current, 0 need waiting)`,
+      );
       return;
     } else {
       console.log(`📋 Found ${previousRuns.length} previous runs`);
